@@ -16,12 +16,17 @@ cat > temp-create-user.ts << 'ENDSCRIPT'
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 
+if (!process.env.DB_PASSWORD) {
+  throw new Error('❌ DB_PASSWORD is not set in the environment');
+}
+
+
 const dataSource = new DataSource({
   type: 'postgres',
   host: 'localhost',
   port: 5432,
   username: 'postgres',
-  password: '74947494', // UPDATE THIS!
+  password: process.env.DB_PASSWORD, 
   database: 'neurobridge',
 });
 
@@ -61,7 +66,7 @@ rm temp-create-user.ts
 echo ""
 echo "✅ Setup complete!"
 echo "📧 Email: super@neurobridge.edu"
-echo "🔑 Password: demo123"
+echo "🔑 Password: process.env.DB_PASSWORD_1"
 echo "🔌 Port: 3001"
 echo ""
 echo "Now run: npm run start:dev"
