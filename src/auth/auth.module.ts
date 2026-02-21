@@ -9,11 +9,13 @@ import { AuditModule } from '@audit/audit.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
+import { InvitesModule } from '@invites/invites.module';
 
 @Module({
   imports: [
     UsersModule,
     AuditModule,
+    InvitesModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

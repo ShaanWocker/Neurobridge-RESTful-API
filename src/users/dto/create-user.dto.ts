@@ -24,10 +24,10 @@ export class CreateUserDto {
   @IsNotEmpty()
   lastName: string;
 
-  @ApiProperty({ enum: UserRole, example: UserRole.SCHOOL_ADMIN })
+  @ApiPropertyOptional({ enum: UserRole, example: UserRole.SCHOOL_ADMIN })
   @IsEnum(UserRole)
-  @IsNotEmpty()
-  role: UserRole;
+  @IsOptional()
+  role?: UserRole;
 
   @ApiPropertyOptional({ example: '+27123456789' })
   @IsString()

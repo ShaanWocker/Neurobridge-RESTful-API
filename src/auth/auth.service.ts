@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -14,6 +15,8 @@ import { RegisterDto } from './dto/register';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { AuditService } from '@audit/audit.service';
 import { AuditAction } from '@audit/entities/audit-log.entity';
+import { InvitesService } from '@invites/invites.service';
+import { UserRole } from '@users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private auditService: AuditService,
+    private invitesService: InvitesService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -204,6 +208,72 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
+    };
+  }
+
+  async createSuperAdminInvite(
+    email: string,
+    baseUrl?: string,
+  ): Promise<{ token: string; inviteLink: string; expiresAt: Date }> {
+    const ttlHours = this.configService.get<number>('INVITE_TTL_HOURS', 72);
+    const { token, invite } = await this.invitesService.createInvite(
+      email,
+      UserRole.SUPER_ADMIN,
+      undefined,
+      ttlHours,
+    );
+
+    const apiUrl = baseUrl || `http://localhost:${this.configService.get('PORT', 3001)}`;
+    const apiPrefix = this.configService.get('API_PREFIX', 'api/v1');
+    const inviteLink = `${apiUrl}/${apiPrefix}/auth/accept-invite?token=${token}`;
+
+    return { token, inviteLink, expiresAt: invite.expiresAt };
+  }
+
+  async acceptInvite(
+    token: string,
+    password: string,
+    firstName?: string,
+    lastName?: string,
+  ): Promise<AuthResponseDto> {
+    const invite = await this.invitesService.validateAndConsumeInvite(token);
+
+    // Derive firstName/lastName from email if not provided
+    const emailLocalPart = invite.email.split('@')[0];
+    const resolvedFirstName = firstName || emailLocalPart || 'Admin';
+    const resolvedLastName = lastName || 'User';
+
+    const user = await this.usersService.createOrActivateFromInvite(
+      invite.email,
+      password,
+      invite.role,
+      resolvedFirstName,
+      resolvedLastName,
+      invite.institutionId,
+    );
+
+    const tokens = await this.generateTokens(user);
+    await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
+
+    await this.auditService.log({
+      userId: user.id,
+      action: AuditAction.USER_CREATED,
+      entityType: 'User',
+      entityId: user.id,
+      metadata: { email: user.email, role: user.role, via: 'invite' },
+    });
+
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        institutionId: user.institutionId,
+      },
     };
   }
 

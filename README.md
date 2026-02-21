@@ -35,3 +35,85 @@ A B2B SaaS API for neurodiverse education collaboration between schools and tuto
 ```bash
 git clone https://github.com/YOUR_USERNAME/neurobridge-api.git
 cd neurobridge-api
+```
+
+## 🧑‍💻 Developer Bootstrap (Invite Flow)
+
+This API uses an invite-only flow for first-time developer access. Follow these steps to obtain a `SUPER_ADMIN` account for local testing.
+
+> ⚠️ The `POST /dev/invite-super-admin` endpoint is **disabled in production** (`NODE_ENV=production`).
+
+### Step 1 – Create a SUPER_ADMIN invite
+
+Ensure the API is running locally (`NODE_ENV=development`), then call:
+
+```http
+POST http://localhost:3001/api/v1/auth/dev/invite-super-admin
+Content-Type: application/json
+
+{
+  "email": "admin@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "<raw-invite-token>",
+  "inviteLink": "http://localhost:3001/api/v1/auth/accept-invite?token=<raw-invite-token>",
+  "expiresAt": "2026-02-24T12:00:00.000Z"
+}
+```
+
+Copy the `token` value for the next step.
+
+### Step 2 – Accept the invite and set a password
+
+```http
+POST http://localhost:3001/api/v1/auth/accept-invite
+Content-Type: application/json
+
+{
+  "token": "<raw-invite-token>",
+  "password": "SecurePassword123!",
+  "firstName": "Admin",
+  "lastName": "User"
+}
+```
+
+**Response:**
+```json
+{
+  "accessToken": "<JWT access token>",
+  "refreshToken": "<JWT refresh token>",
+  "user": {
+    "id": "...",
+    "email": "admin@example.com",
+    "firstName": "Admin",
+    "lastName": "User",
+    "role": "super_admin"
+  }
+}
+```
+
+### Step 3 – Use the Bearer token
+
+Copy the `accessToken` from the response and add it as a Bearer token header in Postman or any HTTP client:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+You now have full `SUPER_ADMIN` access to the API.
+
+### Step 4 – (Optional) Login again
+
+```http
+POST http://localhost:3001/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "SecurePassword123!"
+}
+```

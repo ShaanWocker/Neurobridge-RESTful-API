@@ -28,7 +28,8 @@
       "@audit/*": ["src/audit/*"],
       "@discovery/*": ["src/discovery/*"],
       "@common/*": ["src/common/*"],
-      "@config/*": ["src/config/*"]
+      "@config/*": ["src/config/*"],
+      "@invites/*": ["src/invites/*"]
     }
   },
   "include": ["src/**/*"],
