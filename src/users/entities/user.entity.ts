@@ -22,6 +22,7 @@ export enum UserStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
+  PENDING = 'pending',
 }
 
 @Entity('users')
@@ -46,8 +47,9 @@ export class User {
   @Column({
     type: 'enum',
     enum: UserRole,
+    nullable: true,
   })
-  role: UserRole;
+  role: UserRole | null;
 
   @Column({
     type: 'enum',

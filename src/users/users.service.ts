@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, ILike } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
-import { User, UserStatus } from './entities/user.entity';
+import { User, UserRole, UserStatus } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto, PaginatedResponseDto } from '@common/dto/pagination.dto';
@@ -153,5 +153,40 @@ export class UsersService {
   async remove(id: string): Promise<void> {
     const user = await this.findOne(id);
     await this.usersRepository.softDelete(id);
+  }
+
+  async createOrActivateFromInvite(
+    email: string,
+    password: string,
+    role: UserRole,
+    firstName: string,
+    lastName: string,
+    institutionId?: string,
+  ): Promise<User> {
+    const hashedPassword = await bcrypt.hash(
+      password,
+      this.configService.get('auth.bcryptRounds'),
+    );
+
+    let user = await this.usersRepository.findOne({ where: { email } });
+
+    if (user) {
+      user.password = hashedPassword;
+      user.role = role;
+      user.status = UserStatus.ACTIVE;
+      if (institutionId) user.institutionId = institutionId;
+    } else {
+      user = this.usersRepository.create({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role,
+        status: UserStatus.ACTIVE,
+        institutionId: institutionId ?? null,
+      });
+    }
+
+    return this.usersRepository.save(user);
   }
 }

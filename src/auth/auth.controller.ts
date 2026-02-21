@@ -7,8 +7,11 @@ import {
   HttpStatus,
   Get,
   Patch,
+  Req,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login';
 import { RegisterDto } from './dto/register';
@@ -21,6 +24,8 @@ import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
+import { CreateSuperAdminInviteDto } from '@invites/dto/create-super-admin-invite.dto';
+import { AcceptInviteDto } from '@invites/dto/accept-invite.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -110,6 +115,39 @@ export class AuthController {
       userId,
       changePasswordDto.currentPassword,
       changePasswordDto.newPassword,
+    );
+  }
+
+  @Public()
+  @Post('dev/invite-super-admin')
+  @ApiOperation({
+    summary: '[DEV ONLY] Create a SUPER_ADMIN invite (disabled in production)',
+  })
+  @ApiResponse({ status: 201, description: 'Invite created successfully' })
+  @ApiResponse({ status: 404, description: 'Not available in production' })
+  async devInviteSuperAdmin(
+    @Body() dto: CreateSuperAdminInviteDto,
+    @Req() req: Request,
+  ): Promise<{ token: string; inviteLink: string; expiresAt: Date }> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotFoundException();
+    }
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.authService.createSuperAdminInvite(dto.email, baseUrl);
+  }
+
+  @Public()
+  @Post('accept-invite')
+  @ApiOperation({ summary: 'Accept an invite and set password to gain access' })
+  @ApiResponse({ status: 201, description: 'Account activated', type: AuthResponseDto })
+  @ApiResponse({ status: 404, description: 'Invite not found' })
+  @ApiResponse({ status: 410, description: 'Invite expired or already used' })
+  async acceptInvite(@Body() dto: AcceptInviteDto): Promise<AuthResponseDto> {
+    return this.authService.acceptInvite(
+      dto.token,
+      dto.password,
+      dto.firstName,
+      dto.lastName,
     );
   }
 
